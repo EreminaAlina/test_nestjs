@@ -9,7 +9,7 @@ import { Rent } from '../models/rent.model';
 export class RentService {
   constructor(@InjectClient() private readonly pg: Client) {}
 
-  public async createCarRent(createDto: CreateDto) {
+  async createCarRent(createDto: CreateDto) {
     const { carId, startDate, endDate } = createDto;
     const startDay = new Date(startDate).getDay();
     const endDay = new Date(endDate).getDay();
@@ -35,7 +35,7 @@ export class RentService {
         rent.rows.length &&
         intervalToDuration({
           start: new Date(startDate),
-          end: new Date(rent.rows[0].id),
+          end: new Date(rent.rows[0].endDate),
         }).days < 3
       ) {
         throw new BadRequestException('Разница между сессиями меньше 3 дней');
@@ -46,5 +46,36 @@ export class RentService {
       );
     }
     throw new BadRequestException('Машина с таким id не найдена');
+  }
+
+  async getCalculation(startDate: Date, endDate: Date): Promise<number> {
+    const days = intervalToDuration({
+      start: new Date(startDate),
+      end: new Date(endDate),
+    }).days;
+    if (days > 30) {
+      throw new BadRequestException('Аренда не должна быть больше 30 дней');
+    }
+
+    const tariff = 1000;
+    let sum = 0;
+    for (let i = 0; i < days; i++) {
+      if (i < 4) {
+        sum += tariff;
+        continue;
+      }
+      if (i < 9) {
+        sum += tariff - tariff * 0.05;
+        continue;
+      }
+      if (i < 17) {
+        sum += tariff - tariff * 0.1;
+        continue;
+      }
+      if (i < 29) {
+        sum += tariff - tariff * 0.15;
+      }
+    }
+    return sum;
   }
 }
