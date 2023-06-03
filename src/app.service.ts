@@ -19,7 +19,7 @@ export class AppService {
         }
       }
       await this.pg.query(
-        'CREATE TABLE IF NOT EXISTS rent (id uuid DEFAULT uuid_generate_v4 (), carId uuid, FOREIGN KEY(carId) REFERENCES cars(id), startDate date NOT NULL, endDate date NOT NULL, PRIMARY KEY (id))',
+        'CREATE TABLE IF NOT EXISTS rent (id uuid DEFAULT uuid_generate_v4 (), carId uuid, FOREIGN KEY(carId) REFERENCES cars(id), startDate TIMESTAMP NOT NULL, endDate TIMESTAMP NOT NULL, PRIMARY KEY (id))',
       );
     } catch (e) {
       console.log(e);

@@ -7,8 +7,8 @@ export class CarsController {
   constructor(private rentService: RentService) {}
 
   @Get(':id')
-  checkAvailability(@Param('id') id: number): boolean {
-    return false;
+  checkAvailability(@Param('id') id: string) {
+    return this.rentService.checkAvailable(id);
   }
 
   @Post()
