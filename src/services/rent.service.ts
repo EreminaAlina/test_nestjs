@@ -1,9 +1,9 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
-import { Client } from "pg";
-import { InjectClient } from "nest-postgres";
-import { CreateDto } from "../dto/create.dto";
-import { intervalToDuration } from "date-fns";
-import { Rent } from "../models/rent.model";
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { Client } from 'pg';
+import { InjectClient } from 'nest-postgres';
+import { CreateDto } from '../dto/create.dto';
+import { intervalToDuration } from 'date-fns';
+import { Rent } from '../models/rent.model';
 
 @Injectable()
 export class RentService {
@@ -25,9 +25,7 @@ export class RentService {
     if (interval < 1 || interval > 30) {
       throw new BadRequestException('Длительность сессии не больше 30 дней');
     }
-    const car = await this.pg.query('SELECT * FROM cars WHERE id=$1', [
-      carId,
-    ]);
+    const car = await this.pg.query('SELECT * FROM cars WHERE id=$1', [carId]);
     if (car.rows.length) {
       const rent = await this.pg.query<Rent>(
         'SELECT * FROM rent WHERE carId=$1',
