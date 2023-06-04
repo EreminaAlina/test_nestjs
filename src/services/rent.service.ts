@@ -3,59 +3,49 @@ import {
   Injectable,
   StreamableFile,
 } from '@nestjs/common';
-import { Client } from 'pg';
-import { InjectClient } from 'nest-postgres';
-import { CreateDto } from '../dto/create.dto';
+import { CreateRentDto } from '../dto';
 import {
   endOfMonth,
   getOverlappingDaysInIntervals,
   intervalToDuration,
+  isWeekend,
   isWithinInterval,
 } from 'date-fns';
-import { Rent } from '../models/rent.model';
+import { Rent, RentCarJoin } from '../models';
 import { utils, write } from 'xlsx';
+import { RentRepositoryService } from '../repositories/rent.repository';
+import { average, calculateTariff } from '../utils/utils';
 
 @Injectable()
 export class RentService {
-  constructor(@InjectClient() private readonly pg: Client) {}
+  constructor(private readonly _rentRepository: RentRepositoryService) {}
 
-  async createCarRent(createDto: CreateDto) {
+  async create(createDto: CreateRentDto): Promise<Rent> {
     const { carId, startDate, endDate } = createDto;
-    const startDay = new Date(startDate).getDay();
-    const endDay = new Date(endDate).getDay();
 
-    if ([0, 1].includes(startDay) || [0, 1].includes(endDay)) {
+    if (isWeekend(startDate) || isWeekend(endDate)) {
       throw new BadRequestException(
         'Начало и конец аренды не может выпадать на выходной день',
       );
     }
 
     const interval = intervalToDuration({
-      start: new Date(startDate),
-      end: new Date(endDate),
+      start: startDate,
+      end: endDate,
     }).days;
 
     if (interval < 1 || interval > 30) {
       throw new BadRequestException('Длительность сессии не больше 30 дней');
     }
 
-    const car = await this.pg.query('SELECT * FROM cars WHERE id=$1', [carId]);
-    if (!car.rows.length)
-      throw new BadRequestException('Данная машина уже забронирована');
-
-    const rent = await this.pg.query<Rent>(
-      'SELECT * FROM rent WHERE carId=$1 ORDER BY endDate DESC LIMIT 1',
-      [carId],
-    );
-    if (rent.rows.length) {
-      const rentStart = new Date(rent.rows[0].startdate);
-      const rentEnd = new Date(rent.rows[0].enddate);
+    const rent = await this._rentRepository.findByCarId(carId);
+    if (rent) {
       if (
         getOverlappingDaysInIntervals(
-          { start: new Date(startDate), end: new Date(endDate) },
+          { start: startDate, end: endDate },
           {
-            start: rentStart,
-            end: rentEnd,
+            start: rent.startdate,
+            end: rent.enddate,
           },
         )
       ) {
@@ -63,91 +53,58 @@ export class RentService {
       }
       if (
         intervalToDuration({
-          start: new Date(startDate),
-          end: rentEnd,
+          start: startDate,
+          end: rent.enddate,
         }).days < 3
       ) {
         throw new BadRequestException('Разница между сессиями меньше 3 дней ');
       }
     }
 
-    return await this.pg.query(
-      'INSERT INTO rent(carId, startDate, endDate) VALUES ($1, $2, $3)',
-      [carId, startDate, endDate],
-    );
+    return await this._rentRepository.create(createDto);
   }
 
   async getCalculation(startDate: Date, endDate: Date): Promise<number> {
     const days = intervalToDuration({
-      start: new Date(startDate),
-      end: new Date(endDate),
+      start: startDate,
+      end: endDate,
     }).days;
     if (days > 30) {
       throw new BadRequestException('Аренда не должна быть больше 30 дней');
     }
 
-    const tariff = 1000;
-    let sum = 0;
-    for (let i = 0; i < days; i++) {
-      if (i < 4) {
-        sum += tariff;
-        continue;
-      }
-      if (i < 9) {
-        sum += tariff - tariff * 0.05;
-        continue;
-      }
-      if (i < 17) {
-        sum += tariff - tariff * 0.1;
-        continue;
-      }
-      if (i < 29) {
-        sum += tariff - tariff * 0.15;
-      }
-    }
-    return sum;
+    return calculateTariff(1000, days);
   }
 
   async checkAvailable(id: string): Promise<boolean> {
-    const car = await this.pg.query('SELECT * FROM cars WHERE id=$1', [id]);
+    const rent = await this._rentRepository.findByCarId(id);
 
-    if (!car.rows.length) return false;
-
-    const rent = await this.pg.query<Rent>(
-      'SELECT * FROM rent WHERE carId=$1 ORDER BY endDate DESC LIMIT 1',
-      [id],
-    );
-
-    if (!rent.rows.length) return false;
+    if (!rent) return true;
 
     const now = new Date();
-    const startDate = new Date(rent.rows[0].startdate);
-    const endDate = new Date(rent.rows[0].enddate);
 
-    if (isWithinInterval(now, { start: startDate, end: endDate })) return false;
+    if (isWithinInterval(now, { start: rent.startdate, end: rent.enddate }))
+      return false;
 
     const days = intervalToDuration({
       start: now,
-      end: endDate,
+      end: rent.enddate,
     }).days;
 
-    if (days < 3) return false;
+    return days > 3;
   }
 
-  async getReport(month: number, year: number) {
+  async getReport(month: number, year: number): Promise<StreamableFile> {
     const startMonth = new Date(year, month, 1, 0, 0);
     const endMonth = endOfMonth(startMonth);
-    const rents = await this.pg.query(
-      'SELECT cars.regnumber, rent.startdate, rent.enddate FROM rent JOIN cars ON rent.carid = cars.id WHERE rent.enddate < $1 ORDER BY enddate DESC',
-      [endMonth],
-    );
+    const rents = await this._rentRepository.getRentCarsJoin(endMonth);
+    const rentMap = this._getCarsRentMap(rents, startMonth, endMonth);
 
     const wb = utils.book_new();
-    const rentMap = this._getCarsRentMap(rents.rows, startMonth, endMonth);
     const ws = utils.aoa_to_sheet([
       ['Госномер', 'Средняя загрузка, %'],
       ...rentMap.entries(),
-      ['Итого', this._getAverage([...rentMap.values()])],
+      ['Итого', average([...rentMap.values()])],
     ]);
     utils.book_append_sheet(wb, ws);
 
@@ -155,16 +112,25 @@ export class RentService {
     return new StreamableFile(buf);
   }
 
-  private _getCarsRentMap(rents: any[], startMonth, endMonth) {
+  private _getCarsRentMap(
+    rents: RentCarJoin[],
+    startMonth: Date,
+    endMonth: Date,
+  ): Map<string, number> {
     const map = new Map<string, number>();
     for (const rent of rents) {
-      const days = getOverlappingDaysInIntervals(
-        { start: new Date(rent.startdate), end: new Date(rent.enddate) },
-        {
-          start: startMonth,
-          end: endMonth,
-        },
-      );
+      let days = 0;
+
+      if (rent.startdate && rent.enddate) {
+        days = getOverlappingDaysInIntervals(
+          { start: rent.startdate, end: rent.enddate },
+          {
+            start: startMonth,
+            end: endMonth,
+          },
+        );
+      }
+
       const value = map.get(rent.regnumber) ?? 0;
       map.set(rent.regnumber, value + days);
     }
@@ -174,15 +140,5 @@ export class RentService {
     }
 
     return map;
-  }
-
-  private _getAverage(array: number[]): number {
-    let sum = 0;
-
-    for (const number of array) {
-      sum += number;
-    }
-
-    return sum / array.length;
   }
 }
