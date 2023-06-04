@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
-import { CarsController } from '../controllers/cars.controller';
 import { RentService } from '../services/rent.service';
+import { RentController } from '../controllers/rent.controller';
+import { RentRepositoryService } from '../repositories/rent.repository';
 
 @Module({
-  controllers: [CarsController],
-  providers: [RentService],
+  controllers: [RentController],
+  providers: [RentService, RentRepositoryService],
 })
 export class RentModule {}
