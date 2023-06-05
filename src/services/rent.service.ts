@@ -108,7 +108,7 @@ export class RentService {
     ]);
     utils.book_append_sheet(wb, ws);
 
-    const buf = write(wb, { type: 'buffer', bookType: 'csv' });
+    const buf = write(wb, { type: 'buffer', bookType: 'xlsx' });
     return new StreamableFile(buf);
   }
 
