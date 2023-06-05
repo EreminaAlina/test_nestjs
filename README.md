@@ -1,73 +1,56 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## Описание
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Сервис для бронирования автомобилей, рассчёта стоимости и получения статистики бронирования.
 
-## Description
+Для работы с данным проектом необходимо установить [Postgres](https://www.postgresql.org/download/) и [Node.js](https://nodejs.org/en)(>= 8.9.0)
+После установки Postgres зайти в SQL Shell и прописать следующие данные для взаимодействия с бд:
+- Server: localhost (default)
+- Database: postgres (default)
+- Port: 5432 (default)
+- Username: postgres (default)
+- Password: password
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Installation
-
+Для установки Nest JS использовать команду:
 ```bash
-$ npm install
+$ npm i -g @nestjs/cli
 ```
 
-## Running the app
+### Доступные методы:
+><b>Проверить доступен ли автомобиль: <br>
+> <b>GET
+>http://localhost:3000/rent/available/{:id}
+<br>где id - id машины (String)
+> 
+><b>Произвести расчёт стоимости аренды автомобиля за период: <br>
+><b>GET
+> http://localhost:3000/rent/calculate?{startDate}&{endDate}
+> <br>где startDate - начало периода (Date), endDate - конец периода (Date)
+>
+><b>Произвести расчёт стоимости аренды автомобиля за период: <br>
+><b>POST
+> http://localhost:3000/rent
+> <br> <b> BODY: <br>
+> {carId - id машины (String), startDate - начало аренды (Date), endDate - конец аренды (Date)}
+> 
+><b>Скачать файл(xlsx) с отчётом средней загрузки автомобилей за месяц, по каждому авто и
+итогом по всем автомобилям. (автомобиль(госномер), % дней в аренде за месяц <br>
+><b>GET
+> http://localhost:3000/rent/report?{month}&{year}
+> <br> где month - номер месяца (Number), year - год (Number)
+## Установка
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+$ git clone https://github.com/EreminaAlina/test_nestjs.git
 ```
 
-## Test
+## Запуск приложения
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run install
+npm run start:dev
 ```
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](LICENSE).
+### Примечание
+Т.к. в задании не требовалось создать роут для создания машин, 
+для корректной работы сервиса, при запуске приложения автоматически 
+создаётся несколько машин в БД в таблице cars
