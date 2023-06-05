@@ -2,13 +2,16 @@ import { Module } from '@nestjs/common';
 import { AppService } from './app.service';
 import { RentModule } from './modules/rent.module';
 import { PostgresModule } from 'nest-postgres';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule.forRoot(),
     PostgresModule.forRootAsync({
-      useFactory: () => ({
-        connectionString:
-          'postgresql://postgres:password@localhost:5432/postgres', // todo: env variables
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connectionString: config.get<string>('DB_CONNECTION_STRING'),
       }),
     }),
     RentModule,
